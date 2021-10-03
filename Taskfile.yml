@@ -1,0 +1,46 @@
+version: 3
+tasks:
+  teleport:
+    desc: "Deploy teleport"
+    dir: "teleport"
+    cmds:
+      - cmd: |
+          terraform init
+          terraform plan
+          terraform apply --auto-approve
+
+  cluster:
+    desc: "Deploy cluster"
+    dir: cluster
+    cmds:
+      - cmd: |
+          terraform init
+          terraform plan
+          terraform apply --auto-approve
+
+  cluster-teleport-agent:
+    desc: "Install the teleport agent"
+    env:
+      KUBECONFIG: cluster/scw.yaml
+    cmds:
+      - cmd: |
+          helm repo add teleport https://charts.releases.teleport.dev
+          helm repo update
+          helm upgrade -i teleport-agent teleport/teleport-kube-agent --set kubeClusterName="civo-cluster" \
+          --set proxyAddr="teleport.ediri.online:443" --set authToken={{.CLI_ARGS}} --create-namespace --namespace=teleport-agent
+
+  purge:
+    desc: "Purge everything"
+    cmds:
+      - cmd: |
+          cd cluster
+          terraform destroy --auto-approve
+          cd ..
+          cd teleport
+          terraform destroy --auto-approve
+
+  default:
+    desc: "Default task to deploy the whole poc"
+    cmds:
+      - task: teleport
+      - task: cluster
